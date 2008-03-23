@@ -1,0 +1,93 @@
+<html>
+    <head>
+		<title>Cavas3D test</title>
+		<script src="../jquery-1.2.3.min.js" type="text/javascript" charset="utf-8"></script>
+		<script type="text/javascript" charset="utf-8">
+		var audioLevel = 0;
+			function audioIn(level){
+				if(level){
+					audioLevel = level;
+					$("#bouncer").css({width:level});
+				}
+			}
+		</script>
+        <script language="javascript" src="MathHelper.js"></script>
+        <script language="javascript" src="Vector.js"></script>
+        <script language="javascript" src="Matrix.js"></script>
+        <script language="javascript" src="Quaternion.js"></script>
+        <!--script language="javascript" src="sylvester.js"></script-->
+        
+        <script language="javascript" src="FreeCamera.js"></script>
+        <script language="javascript" src="ChaseCamera.js"></script>
+        <script language="javascript" src="PanCamera.js"></script>
+        <script language="javascript" src="FixedCamera.js"></script>
+        
+        <script language="javascript" src="Model.js"></script>
+        <script language="javascript" src="Primitive.js"></script>
+        <script language="javascript" src="Cube.js"></script>
+        
+        <script language="javascript" src="Scene.js"></script>
+        <script language="javascript" src="Main.js"></script>
+
+		
+		    <script id="shader-fs" type="x-shader/x-fragment">
+		varying float intensity;
+		varying vec4 FragColor;
+
+		void main(void) {
+		    //gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+		    gl_FragColor = FragColor;
+		}
+		    </script>
+
+		    <script id="shader-vs" type="x-shader/x-vertex">
+		attribute vec3 Vertex;
+		attribute vec3 Normal;
+		attribute vec4 InColor;
+
+		uniform mat4 PMatrix;
+		uniform mat4 MVMatrix;
+		uniform mat3 NMatrix;
+
+		uniform vec4 LightPos;
+
+		varying vec4 FragColor;
+
+		void main(void) {
+		    vec4 v = vec4(Vertex, 1.0);
+		    vec4 vmv = MVMatrix * v;
+		    gl_Position = PMatrix * vmv;
+
+		    vec3 nn = normalize(NMatrix * Normal);
+		    vec3 lightDir = vec3(normalize(vmv - LightPos));
+
+		    float NdotL = max(dot(lightDir, Normal), 0.0);
+
+		    const vec3 diffuseColor = vec3(0.4, 0.4, 0.2);
+		    const vec3 lightColor = vec3(0.1, 0.1, 0.6);
+		    const vec3 ambientColor = vec3(0.1, 0.1, 0.1);
+
+		    vec3 diffuse = diffuseColor + lightColor;
+
+		    FragColor = vec4(NdotL * diffuse + ambientColor, 1.0);
+		}
+		    </script>
+
+    </head>
+    
+    <body onload="canvasMain('canvas');">
+			<div id="bouncer" style='position:absolute;height:10px;background:red;width:10px;'>
+
+			</div>
+		<!--url's used in the movie-->
+		<!--text used in the movie-->
+		<!-- saved from url=(0013)about:internet -->
+		<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0" width="550" height="138" id="audioin" align="middle">
+		<param name="allowScriptAccess" value="sameDomain" />
+		<param name="movie" value="../audioin.swf" /><param name="quality" value="high" /><param name="bgcolor" value="#666666" /><embed src="../audioin.swf" quality="high" bgcolor="#666666" width="550" height="138" name="audioin" align="middle" allowScriptAccess="sameDomain" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" />
+		</object>
+	
+		<canvas id="canvas" style="border: 2px solid blue" width="500" height="500">
+		</canvas>
+    </body>
+</html>

@@ -7,6 +7,7 @@ body {
 	font-family: sans-serif;
 	background: white;
 	color: black;
+	margin: 0;
 }
 label {
 	display: block;
@@ -17,126 +18,75 @@ small {
 	bottom: 0.5em;
 }
 </style>
+<script src="jquery-1.2.3.min.js" type="text/javascript" charset="utf-8"></script>
 
 <script type="application/javascript;version=1.7">
-
-function next_pow2(n)
-{
-	return Math.pow(2, Math.ceil(Math.log(n) / Math.LN2));
-}
-
-function status(msg)
-{
-	document.getElementById('status').innerHTML = msg;
-}
-
-function escapeHTML(str)
-{
-	return str.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;');
-}
-
-var api_key = '96bdd36ab44af648a6c99916570a1f0f';
-function flickr_url(method, params)
-{
-	var url = 'http://api.flickr.com/services/rest/?api_key=' + api_key + '&format=json&method=' + method;
-	for (var [key, value] in params)
-	{
-		url += '&'+key+'='+escape(value);
+var audioLevel = 0;
+var gl;
+function audioIn(level){
+	if(level>-1){
+		audioLevel = level;
+		// $("#bouncer").css({width:level});
 	}
-	return url;
 }
 
-function request(url, callback)
-{
-	//if (window.jsonFlickrApi) throw Error();
-	window.jsonFlickrApi = function (data)
-	{
-		delete window.jsonFlickrApi;
-		document.body.removeChild(n);
-		if (data.stat != 'ok') throw Error();
-		callback(data);
-	}
+//tabs in text area script cribbed from: http://l4x.org/261/
 
-	var n = document.createElement('script');
-	n.setAttribute('src', url);
-	document.body.appendChild(n);
+function insertTab(event,obj) {
+    var tabKeyCode = 9;
+    if (event.which) // mozilla
+        var keycode = event.which;
+    else // ie
+        var keycode = event.keyCode;
+    if (keycode == tabKeyCode) {
+        if (event.type == "keydown") {
+            if (obj.setSelectionRange) {
+                // mozilla
+                var s = obj.selectionStart;
+                var e = obj.selectionEnd;
+                obj.value = obj.value.substring(0, s) + 
+                    "\t" + obj.value.substr(e);
+                obj.setSelectionRange(s + 1, s + 1);
+                obj.focus();
+            } else if (obj.createTextRange) {
+                // ie
+                document.selection.createRange().text="\t"
+                obj.onblur = function() { this.focus(); this.onblur = null; };
+            } else {
+                // unsupported browsers
+            }
+        }
+        if (event.returnValue) // ie ?
+            event.returnValue = false;
+        if (event.preventDefault) // dom
+            event.preventDefault();
+        return false; // should work in all browsers
+    }
+    return true;
 }
 
-var image_buffer = [];
-
-function load_image(gl, img, title)
-{
-	var [id] = gl.genTextures(1);
-	gl.bindTexture(gl.TEXTURE_2D, id);
-	gl.texParameter(gl.TEXTURE_2D, gl.GENERATE_MIPMAP, true);
-	gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-	gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-	if ((img.width & (img.width-1)) || (img.height & (img.height-1)))
-	{
-		// not power-of-two, so resize it using a 2d canvas
-		var w = next_pow2(img.width);
-		var h = next_pow2(img.height);
-		var canvas = document.createElement('canvas');
-		canvas.width = w;
-		canvas.height = h;
-		var ctx = canvas.getContext('2d');
-		ctx.drawImage(img, 0, 0, w, h);
-		gl.texImage2DHTML(gl.TEXTURE_2D, canvas);
-	}
-	else
-	{
-		gl.texImage2DHTML(gl.TEXTURE_2D, img);
-	}
-	image_buffer.push({ id:id, title:title });
-	status("Buffered " + image_buffer.length + " images");
-}
-
-window.addEventListener('load', function ()
-{
+$(document).ready(function(){
+	
 	var canvas = document.getElementById('c');
-	try { var gl = canvas.getContext('moz-gles11'); } catch (e) {}
+	try {gl = canvas.getContext('moz-gles11'); } catch (e) {}
 	if (! gl)
 	{
 		alert("Sorry, your browser does not have the moz-gles11 canvas extension");
 		canvas.parentNode.replaceChild(canvas.firstChild, canvas);
 		return;
 	}
+	every_frame = function(){
+		for(i=0;i<3;i++){
+			// gl.rotate(speed*t*i*1.50, .8, .4, 0);
+			gl.translate(i*0.202*audioLevel, 0, 0);
+			gl.rotate(speed*t*502.3, 1, .4, .3);
+			drawCube();
+		}
 
-	var got_image_pages = {};
-	function get_images(tags)
-	{
-		var page;
-		if (got_image_pages[tags])
-			page = ++got_image_pages[tags];
-		else
-			page = got_image_pages[tags] = 1;
-
-		request(
-			flickr_url('flickr.photos.search', { per_page:5, page:page, tags:tags }),
-			function (data)
-			{
-				for ([, photo] in data.photos.photo)
-				{
-					var img_url = 'http://farm'+photo.farm+'.static.flickr.com/'+photo.server+'/'+photo.id+'_'+photo.secret+'.jpg';
-					var i = new Image();
-					let title = '<a href="http://www.flickr.com/photos/'+photo.owner+'/'+photo.id+'">'+escapeHTML(photo.title)+'<\/a>';
-					i.onload = function () { load_image(gl, this, title) };
-					i.src = img_url;
-				}
-			}
-		);
 	}
-
-	window.flush_buffer = function()
-	{
-		image_buffer = [];
-		get_images(document.getElementById('tags').value);
-	}
-
 	var background = [0, 0, 0, 1];
 	// var background = [1, 1, 1, 1];
 
-	flush_buffer();
 
 	gl.matrixMode(gl.PROJECTION);
 	gl.loadIdentity();
@@ -199,6 +149,8 @@ window.addEventListener('load', function ()
 		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);
 	}
 	
+	// should probably switch this to use its own
+	// proper set of vertices, rather than running off the plane
 	var drawCube = function(){
 		gl.vertexPointer(plane.vertex_buffer);
 		gl.texCoordPointer(plane.texcoord_buffer);
@@ -238,8 +190,7 @@ window.addEventListener('load', function ()
 		gl.vertexPointer(plane.vertex_buffer);
 		gl.texCoordPointer(plane.texcoord_buffer);
 		gl.normalPointer(plane.normal_buffer);
-		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);		
-				
+		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);
 	}
 	
 	var t = 0;
@@ -250,31 +201,43 @@ window.addEventListener('load', function ()
 	setInterval(function() {
 		if (document.getElementById('pause').checked)
 			return;
-
-		++t;
-		// gl.bindTexture(gl.TEXTURE_2D, img_id);
-
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 		
 		gl.loadIdentity();
+
+		// inital translation and rotation, should be linked to a camera object
 		gl.translate(0, 0, -30.0)
+		gl.rotate(45, 1, 1, 0);
+		
 		gl.pushMatrix();
 		gl.gluLookAt(
 				0, 0, 3.5,
 				0, 0, 0,
 				0, 1, 0);
-				
-		for(i=0;i<1;i++){
-			// gl.rotate(speed*t*i*1.50, .8, .4, 0);
-			// gl.translate(i*1.202, 0, 0);
-			gl.rotate(speed*t*502.3, 1, .4, 0);
-			drawCube();
-		}
 		
+		if(every_frame){
+			every_frame();
+		}
+				
 		gl.popMatrix();
 		gl.swapBuffers();
 		
 	}, 30);
+	
+	$("#code").keydown(function(eventObject){
+		insertTab(eventObject,this);
+	})
+	
+	$("#run_code").click(function(){
+		eval($("#code").val());
+	});
+});
+
+var every_frame = function(){
+	
+}
+window.addEventListener('load', function ()
+{
 
 }, false);
 
@@ -289,32 +252,35 @@ if (! window.loaded_first_script)
 }
 </script>
 
-<canvas width="800" height="600" id="c"><p>
-Sorry, your browser doesn't support this &lt;canvas&gt;.
-For a boring alternate version of this page's content, visit
-<a href="http://flickr.com">Flickr</a>.
-
-</canvas>
-
+<canvas width="800" height="600" id="c"></canvas>
+<textarea name="code" rows="8" cols="40" id='code' style='position:absolute;top:0;left:0;border:0;background:none;color:#fff;padding:10px;width:800px;height:600px;'></textarea>
+<p id='run_code'>run code</p>
 <form onsubmit="flush_buffer(); return false">
 <table>
 	<tr>
 		<td><label for="pause">Pause</label>
 		<td><input type="checkbox" id="pause">
-	<tr>
-		<td><label for="tags">Tag</label>
-		<td><input type="text" id="tags" value="canvas">
-
-	<tr>
-		<td>Status
-		<td><span id="status"></span>
-	<tr>
-		<td>Now showing
-		<td><span id="current"></span>
+	</tr>
 </table>
 </form>
+code to be entered:
+<pre style='width:200px'>
+	var t = 0;
+	var turn = 0;
+	var speed = 0.002;
+	var img_id = 0;
 
-<footer>
-	<p><small>This product uses the Flickr API but is not endorsed or certified by Flickr.</small>
-
-</footer>
+	every_frame = function(){
+		t++;
+		for(i=0;i&lt;3;i++){
+			// gl.rotate(speed*t*i*1.50, .8, .4, 0);
+			gl.translate(i*0.202*audioLevel, 0, 0);
+			gl.rotate(speed*t*502.3, 1, .4, .3);
+			drawCube();
+		}
+	}
+</pre>
+<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0" width="550" height="138" id="audioin" align="middle">
+<param name="allowScriptAccess" value="sameDomain" />
+<param name="movie" value="audioin.swf" /><param name="quality" value="high" /><param name="bgcolor" value="#666666" /><embed src="audioin.swf" quality="high" bgcolor="#666666" width="550" height="138" name="audioin" align="middle" allowScriptAccess="sameDomain" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" />
+</object>

@@ -2,15 +2,6 @@
     <head>
 		<title>Cavas3D test</title>
 		<script src="../jquery-1.2.3.min.js" type="text/javascript" charset="utf-8"></script>
-		<script type="text/javascript" charset="utf-8">
-		var audioLevel = 0;
-			function audioIn(level){
-				if(level){
-					audioLevel = level;
-					$("#bouncer").css({width:level});
-				}
-			}
-		</script>
         <script language="javascript" src="MathHelper.js"></script>
         <script language="javascript" src="Vector.js"></script>
         <script language="javascript" src="Matrix.js"></script>
@@ -21,7 +12,10 @@
         <script language="javascript" src="ChaseCamera.js"></script>
         <script language="javascript" src="PanCamera.js"></script>
         <script language="javascript" src="FixedCamera.js"></script>
+
+        <script language="javascript" src="OrbitManipulator.js"></script>
         
+
         <script language="javascript" src="Model.js"></script>
         <script language="javascript" src="Primitive.js"></script>
         <script language="javascript" src="Cube.js"></script>
@@ -29,13 +23,36 @@
         <script language="javascript" src="Scene.js"></script>
         <script language="javascript" src="Main.js"></script>
 
+		<script type="text/javascript" charset="utf-8">
+			var left	    = new Vector(1.0, 0.0, 0.0); // Left vector
+			var up		    = new Vector(0.0, 1.0, 0.0); // Up Vector
+			var dir		    = new Vector(0.0, 0.0, 1.0); // Forward Vector
+			var pos		    = new Vector(0.0, 0.0, 0.0); // Position
+			
+		</script>
+		<script type="text/javascript" charset="utf-8">
+		var audioLevel = 0;
+		var scn;
+			function audioIn(level){
+				if(level){
+					audioLevel = level;
+					$("#bouncer").css({width:level});
+				}
+				glCanvas = scn.getGL();
+				drawCube(glCanvas);
+				
+			}
+			function buildCube(){
+				scn.addObjectToScene(new Cube());
+			}
+		</script>
 		
 		    <script id="shader-fs" type="x-shader/x-fragment">
 		varying float intensity;
 		varying vec4 FragColor;
 
 		void main(void) {
-		    //gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+		    gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
 		    gl_FragColor = FragColor;
 		}
 		    </script>

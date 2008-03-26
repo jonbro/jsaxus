@@ -5,19 +5,32 @@
 <script src="jquery-1.2.3.min.js" type="text/javascript" charset="utf-8"></script>
 <script type="text/javascript" charset="utf-8">
 	function audioIn(level){
-		if(level){
+		if(level>-1){
 			$("#bouncer").css({width:level});
 		}
 	}
+	
+	$(document).ready(function(){
+		gl = document.getElementById('canvas').getContext('moz-glweb20');
+	});
+	
+	
+    // setInterval(function () {
+    //   gl.clearColor(Math.random(), Math.random(), Math.random(), 1.0);
+    //   gl.clear(gl.COLOR_BUFFER_BIT);
+    //   gl.swapBuffers();
+    // }, 1000);
+    
 </script>
 </head>
 <body bgcolor="#666666">
-	<div id="bouncer" style='position:absolute;height:10px;background:red;width:10px;'>
-		
+	<div id="bouncer" style='position:absolute;height:10px;bottom:0px;background:red;width:10px;'>
 	</div>
 <!--url's used in the movie-->
 <!--text used in the movie-->
 <!-- saved from url=(0013)about:internet -->
+<canvas id="canvas" width="500" height="500"></canvas>
+
 <object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0" width="550" height="138" id="audioin" align="middle">
 <param name="allowScriptAccess" value="sameDomain" />
 <param name="movie" value="audioin.swf" /><param name="quality" value="high" /><param name="bgcolor" value="#666666" /><embed src="audioin.swf" quality="high" bgcolor="#666666" width="550" height="138" name="audioin" align="middle" allowScriptAccess="sameDomain" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" />

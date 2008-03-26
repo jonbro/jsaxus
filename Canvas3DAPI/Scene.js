@@ -32,7 +32,7 @@ function Scene()
 	var canvasWidth		= 0;
 	var lastTimeTaken	= Date.now();
 	var timerID			= 0;
-	
+	var clearColor		= new Array(0.4, 0.4, 0.4, 1.0);
 	// -------------------------------------------------------
 	
 	// Getters
@@ -127,7 +127,10 @@ function Scene()
 		
 		return false;
 	}
-
+	this.everyFrame = function(){
+		//do nothing
+		return true;
+	}
 	// Remove objects form the scene
 	this.removeObjectFromScene = function(obj)
 	{
@@ -152,7 +155,12 @@ function Scene()
 		
 		return false;
 	}
-	
+	this.setClearColor = function(f1, f2, f3)
+	{
+		clearColor[0] = f1;
+		clearColor[1] = f2;
+		clearColor[2] = f3;
+	}
 	// Sets up OpenGL
 	this.setupOpenGL = function()
 	{
@@ -164,15 +172,15 @@ function Scene()
 		glCanvas3D.gluPerspective(45, canvasWidth / canvasHeight, 0.1, 200);
 		glCanvas3D.matrixMode(glCanvas3D.MODELVIEW);
 		glCanvas3D.loadIdentity();
-		
+		glCanvas3D.shadeModel(glCanvas3D.SMOOTH);
 		// Lighting
 		glCanvas3D.enable(glCanvas3D.LIGHTING);
-		glCanvas3D.light(glCanvas3D.LIGHT0, glCanvas3D.AMBIENT, [0.1, 0.1, 0.1, 1.0]);
-		glCanvas3D.light(glCanvas3D.LIGHT0, glCanvas3D.DIFFUSE, [1.0, 1.0, 1.0, 1.0]);
-		glCanvas3D.light(glCanvas3D.LIGHT0, glCanvas3D.SPECULAR, [1.0, 1.0, 1.0, 1.0]);
+		// glCanvas3D.light(glCanvas3D.LIGHT0, glCanvas3D.AMBIENT, [0.1, 0.1, 0.1, 1.0]);
+		// glCanvas3D.light(glCanvas3D.LIGHT0, glCanvas3D.DIFFUSE, [1.0, 1.0, 1.0, 1.0]);
+		// glCanvas3D.light(glCanvas3D.LIGHT0, glCanvas3D.SPECULAR, [1.0, 1.0, 1.0, 1.0]);
 		glCanvas3D.light(glCanvas3D.LIGHT0, glCanvas3D.POSITION, [0.0, 270.0, 0.0, 1.0]);
-		glCanvas3D.light(glCanvas3D.LIGHT0, glCanvas3D.SPOT_CUTOFF, 180);
-		glCanvas3D.light(glCanvas3D.LIGHT0, glCanvas3D.SPOT_DIRECTION, [0.0, -1.0, 0.0, 1.0]);
+		// glCanvas3D.light(glCanvas3D.LIGHT0, glCanvas3D.SPOT_CUTOFF, 180);
+		// glCanvas3D.light(glCanvas3D.LIGHT0, glCanvas3D.SPOT_DIRECTION, [0.0, -1.0, 0.0, 1.0]);
 		glCanvas3D.enable(glCanvas3D.LIGHT0);
 	}
 	
@@ -208,11 +216,10 @@ function Scene()
 		}
 		
 		// Clear the screen
-		glCanvas3D.clearColor(0.4, 0.4, 0.6, 1.0);
+		glCanvas3D.clearColor(clearColor[0], clearColor[1], clearColor[2], 1.0);
 		glCanvas3D.clear(glCanvas3D.COLOR_BUFFER_BIT | glCanvas3D.GL_DEPTH_BUFFER_BIT);
 		
 		// Enable Lights
-
 		// Update the objects
 		thisScn.updateObjects(Date.now() - lastTimeTaken);
 		lastTimeTaken = Date.now();

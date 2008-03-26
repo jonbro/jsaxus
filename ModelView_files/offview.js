@@ -109,7 +109,7 @@ function flatten(ar, numPerElement) {
 var count = 0;
 
 function handleLoad() {
-    note = document.getElementById("note");
+    // note = document.getElementById("note");
 
     gCanvas = document.getElementById("canvas");
     gl = gCanvas.getContext("moz-glweb20");

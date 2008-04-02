@@ -1,0 +1,280 @@
+<!DOCTYPE HTML>
+<title>Canvas 3D &ndash; example</title>
+<style>
+body {
+	font-family: sans-serif;
+	background: white;
+	color: black;
+}
+label {
+	display: block;
+	width: 100%;
+}
+small {
+	position: absolute;
+	bottom: 0.5em;
+}
+</style>
+
+<script type="application/javascript;version=1.7">
+
+function next_pow2(n)
+{
+	return Math.pow(2, Math.ceil(Math.log(n) / Math.LN2));
+}
+
+function status(msg)
+{
+	document.getElementById('status').innerHTML = msg;
+}
+
+function escapeHTML(str)
+{
+	return str.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;');
+}
+
+var api_key = '96bdd36ab44af648a6c99916570a1f0f';
+function flickr_url(method, params)
+{
+	var url = 'http://api.flickr.com/services/rest/?api_key=' + api_key + '&format=json&method=' + method;
+	for (var [key, value] in params)
+	{
+		url += '&'+key+'='+escape(value);
+	}
+	return url;
+}
+
+function request(url, callback)
+{
+	//if (window.jsonFlickrApi) throw Error();
+	window.jsonFlickrApi = function (data)
+	{
+		delete window.jsonFlickrApi;
+		document.body.removeChild(n);
+		if (data.stat != 'ok') throw Error();
+		callback(data);
+	}
+
+	var n = document.createElement('script');
+	n.setAttribute('src', url);
+	document.body.appendChild(n);
+}
+
+var image_buffer = [];
+
+function load_image(gl, img, title)
+{
+	var [id] = gl.genTextures(1);
+	gl.bindTexture(gl.TEXTURE_2D, id);
+	gl.texParameter(gl.TEXTURE_2D, gl.GENERATE_MIPMAP, true);
+	gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+	gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+	if ((img.width & (img.width-1)) || (img.height & (img.height-1)))
+	{
+		// not power-of-two, so resize it using a 2d canvas
+		var w = next_pow2(img.width);
+		var h = next_pow2(img.height);
+		var canvas = document.createElement('canvas');
+		canvas.width = w;
+		canvas.height = h;
+		var ctx = canvas.getContext('2d');
+		ctx.drawImage(img, 0, 0, w, h);
+		gl.texImage2DHTML(gl.TEXTURE_2D, canvas);
+	}
+	else
+	{
+		gl.texImage2DHTML(gl.TEXTURE_2D, img);
+	}
+	image_buffer.push({ id:id, title:title });
+	status("Buffered " + image_buffer.length + " images");
+}
+
+window.addEventListener('load', function ()
+{
+	var canvas = document.getElementById('c');
+	try { var gl = canvas.getContext('moz-gles11'); } catch (e) {}
+	if (! gl)
+	{
+		alert("Sorry, your browser does not have the moz-gles11 canvas extension");
+		canvas.parentNode.replaceChild(canvas.firstChild, canvas);
+		return;
+	}
+
+	var got_image_pages = {};
+	function get_images(tags)
+	{
+		var page;
+		if (got_image_pages[tags])
+			page = ++got_image_pages[tags];
+		else
+			page = got_image_pages[tags] = 1;
+
+		request(
+			flickr_url('flickr.photos.search', { per_page:5, page:page, tags:tags }),
+			function (data)
+			{
+				for ([, photo] in data.photos.photo)
+				{
+					var img_url = 'http://farm'+photo.farm+'.static.flickr.com/'+photo.server+'/'+photo.id+'_'+photo.secret+'.jpg';
+					var i = new Image();
+					let title = '<a href="http://www.flickr.com/photos/'+photo.owner+'/'+photo.id+'">'+escapeHTML(photo.title)+'<\/a>';
+					i.onload = function () { load_image(gl, this, title) };
+					i.src = img_url;
+				}
+			}
+		);
+	}
+
+	window.flush_buffer = function()
+	{
+		image_buffer = [];
+		get_images(document.getElementById('tags').value);
+	}
+
+	//var background = [0.9, 0.8, 0.6, 1];
+	var background = [1, 1, 1, 1];
+
+	flush_buffer();
+
+	gl.matrixMode(gl.PROJECTION);
+	gl.loadIdentity();
+	gl.gluPerspective(45, 1, 0.1, 100);
+
+	gl.matrixMode(gl.MODELVIEW);
+
+	gl.clearColor(background[0], background[1], background[2], 1);
+
+	gl.enable(gl.FOG);
+	gl.fogParameter(gl.FOG_MODE, gl.LINEAR);
+	gl.fogParameter(gl.FOG_START, 3.7);
+	gl.fogParameter(gl.FOG_END, 4.5);
+	gl.fogParameter(gl.FOG_COLOR, background);
+
+	gl.enable(gl.DEPTH_TEST);
+	gl.cullFace(gl.BACK);
+	gl.enable(gl.CULL_FACE);
+	gl.enable(gl.TEXTURE_2D);
+
+	gl.enable(gl.LIGHTING);
+	gl.light(gl.LIGHT0, gl.AMBIENT, [1, 1, 1, 1]);
+	gl.light(gl.LIGHT0, gl.DIFFUSE, [1, 1, 1, 1]);
+	gl.light(gl.LIGHT0, gl.POSITION, [100, 0, 500, 0]);
+	gl.light(gl.LIGHT0, gl.SPECULAR, [1, 1, 1, 1]);
+	gl.material(gl.FRONT_AND_BACK, gl.SPECULAR, [4,4,4,1]);
+	gl.material(gl.FRONT_AND_BACK, gl.SHININESS, 32);
+	gl.enable(gl.LIGHT0);
+
+	gl.enableClientState(gl.VERTEX_ARRAY);
+	gl.enableClientState(gl.TEXTURE_COORD_ARRAY);
+	gl.enableClientState(gl.NORMAL_ARRAY);
+
+
+	var vertices = [
+		-1,-1,0, 1,-1,0, -1,1,0,
+		-1,1,0, 1,-1,0, 1,1,0,
+	
+		1,-1,0, -1,-1,0, -1,1,0,
+		1,-1,0, -1,1,0, 1,1,0,
+	];
+	var texcoords = [
+		0,1, 1,1, 0,0,
+		0,0, 1,1, 1,0,
+		0,1, 1,1, 1,0,
+	   	0,1, 1,0, 0,0,
+	];
+	var normals = [
+		0,0,1, 0,0,1, 0,0,1,
+		0,0,1, 0,0,1, 0,0,1,
+		0,0,-1, 0,0,-1, 0,0,-1,
+		0,0,-1, 0,0,-1, 0,0,-1,
+	];
+	var vertex_buffer = gl.createBuffer(gl.STATIC_DRAW, 3, gl.FLOAT, vertices);
+	var texcoord_buffer = gl.createBuffer(gl.STATIC_DRAW, 2, gl.FLOAT, texcoords);
+	var normal_buffer = gl.createBuffer(gl.STATIC_DRAW, 3, gl.FLOAT, normals);
+	
+	var t = 0;
+	var turn = 0;
+	var speed = 0.002;
+	var img_id = 0;
+	setInterval(function() {
+		if (document.getElementById('pause').checked)
+			return;
+
+		++t;
+		var new_turn = Math.floor(2 * (t*speed + 0.25));
+		if (image_buffer.length && new_turn != turn)
+		{
+			turn = new_turn;
+			var img = image_buffer.shift();
+			img_id = img.id;
+			console.log(img_id);
+			document.getElementById('current').innerHTML = img.title;
+			status("Buffered " + image_buffer.length + " images");
+
+			if (image_buffer.length <= 2)
+			{
+				get_images(document.getElementById('tags').value);	
+			}
+		}
+		gl.bindTexture(gl.TEXTURE_2D, img_id);
+
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+		gl.loadIdentity();
+		gl.gluLookAt(
+				0, 0, 3.5,
+				0, 0, 0,
+				0, 1, 0);
+		gl.rotate(speed*t * 360, 0, 1, 0);
+
+		gl.vertexPointer(vertex_buffer);
+		gl.texCoordPointer(texcoord_buffer);
+		gl.normalPointer(normal_buffer);
+		gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 3);
+
+		gl.swapBuffers();
+
+	}, 30);
+
+}, false);
+
+window.loaded_first_script = true;
+</script>
+<script>
+if (! window.loaded_first_script)
+{
+	alert("Sorry, your browser does not support JavaScript 1.7");
+	var canvas = document.getElementById('c');
+	canvas.parentNode.replaceChild(canvas.firstChild, canvas); // oops, doesn't work in Opera
+}
+</script>
+
+<canvas width="512" height="512" id="c"><p>
+Sorry, your browser doesn't support this &lt;canvas&gt;.
+For a boring alternate version of this page's content, visit
+<a href="http://flickr.com">Flickr</a>.
+
+</canvas>
+
+<form onsubmit="flush_buffer(); return false">
+<table>
+	<tr>
+		<td><label for="pause">Pause</label>
+		<td><input type="checkbox" id="pause">
+	<tr>
+		<td><label for="tags">Tag</label>
+		<td><input type="text" id="tags" value="canvas">
+
+	<tr>
+		<td>Status
+		<td><span id="status"></span>
+	<tr>
+		<td>Now showing
+		<td><span id="current"></span>
+</table>
+</form>
+
+<footer>
+	<p><small>This product uses the Flickr API but is not endorsed or certified by Flickr.</small>
+
+</footer>

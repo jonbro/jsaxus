@@ -1,0 +1,288 @@
+<!DOCTYPE HTML>
+<!-- https://labs.mozilla.com/forum/index.php/topic,58.0.html -->
+<!-- http://canvex.lazyilluminati.com/misc/photos.html -->
+<title>JSXUS</title>
+
+<style>
+body {
+	font-family: sans-serif;
+	background: white;
+	color: black;
+	margin: 0;
+}
+label {
+	display: block;
+	width: 100%;
+}
+small {
+	position: absolute;
+	bottom: 0.5em;
+}
+</style>
+<script src="jquery-1.2.3.min.js" type="text/javascript" charset="utf-8"></script>
+
+<script type="application/javascript;version=1.7">
+var audioLevel = 0;
+var gl;
+function audioIn(level){
+	if(level>-1){
+		audioLevel = level;
+		// $("#bouncer").css({width:level});
+	}
+}
+
+//tabs in text area script cribbed from: http://l4x.org/261/
+
+function insertTab(event,obj) {
+    var tabKeyCode = 9;
+    if (event.which) // mozilla
+        var keycode = event.which;
+    else // ie
+        var keycode = event.keyCode;
+    if (keycode == tabKeyCode) {
+        if (event.type == "keydown") {
+            if (obj.setSelectionRange) {
+                // mozilla
+                var s = obj.selectionStart;
+                var e = obj.selectionEnd;
+                obj.value = obj.value.substring(0, s) + 
+                    "\t" + obj.value.substr(e);
+                obj.setSelectionRange(s + 1, s + 1);
+                obj.focus();
+            } else if (obj.createTextRange) {
+                // ie
+                document.selection.createRange().text="\t"
+                obj.onblur = function() { this.focus(); this.onblur = null; };
+            } else {
+                // unsupported browsers
+            }
+        }
+        if (event.returnValue) // ie ?
+            event.returnValue = false;
+        if (event.preventDefault) // dom
+            event.preventDefault();
+        return false; // should work in all browsers
+    }
+    return true;
+}
+
+$(document).ready(function(){
+	// before loading the gl, set the canvas to full width
+	// $('#c').css({width:100%});
+	var canvas = document.getElementById('c');
+	try {gl = canvas.getContext('moz-gles11'); } catch (e) {}
+	if (! gl)
+	{
+		alert("Sorry, your browser does not have the moz-gles11 canvas extension");
+		canvas.parentNode.replaceChild(canvas.firstChild, canvas);
+		return;
+	}
+	every_frame = function(){
+		for(i=0;i<3;i++){
+			// gl.rotate(speed*t*i*1.50, .8, .4, 0);
+			gl.translate(i*0.202*audioLevel, 0, 0);
+			gl.rotate(speed*t*502.3, 1, .4, .3);
+			drawCube();
+		}
+
+	}
+	var background = [0, 0, 0, 1];
+	// var background = [1, 1, 1, 1];
+
+
+	gl.matrixMode(gl.PROJECTION);
+	gl.loadIdentity();
+	gl.gluPerspective(45, 1, 0.1, 100);
+
+	gl.matrixMode(gl.MODELVIEW);
+
+	gl.clearColor(background[0], background[1], background[2], 1);
+
+	gl.enable(gl.DEPTH_TEST);
+	gl.cullFace(gl.BACK);
+	gl.enable(gl.CULL_FACE);
+	
+	gl.enable(gl.LIGHTING);
+	gl.light(gl.LIGHT0, gl.AMBIENT, [1, 1, 1, 1]);
+	gl.light(gl.LIGHT0, gl.DIFFUSE, [1, 1, 1, 1]);
+	gl.light(gl.LIGHT0, gl.POSITION, [100, 0, 500, 0]);
+	gl.light(gl.LIGHT0, gl.SPECULAR, [1, 1, 1, 1]);
+	gl.material(gl.FRONT_AND_BACK, gl.SPECULAR, [1,1,1,1]);
+	gl.material(gl.FRONT_AND_BACK, gl.SHININESS, 12);
+	
+	gl.enable(gl.LIGHT0);
+
+	gl.enableClientState(gl.VERTEX_ARRAY);
+	gl.enableClientState(gl.TEXTURE_COORD_ARRAY);
+	gl.enableClientState(gl.NORMAL_ARRAY);
+
+	planeObject = function(){
+		this.vertices = [
+			-1,-1,0, 1,-1,0, -1,1,0,
+			-1,1,0, 1,-1,0, 1,1,0,
+
+			1,-1,0, -1,-1,0, -1,1,0,
+			1,-1,0, -1,1,0, 1,1,0,
+		];
+		this.texcoords = [
+			0,1, 1,1, 0,0,
+			0,0, 1,1, 1,0,
+			0,1, 1,1, 1,0,
+		   	0,1, 1,0, 0,0,
+		];
+		this.normals = [
+			0,0,1, 0,0,1, 0,0,1,
+			0,0,1, 0,0,1, 0,0,1,
+			0,0,-1, 0,0,-1, 0,0,-1,
+			0,0,-1, 0,0,-1, 0,0,-1,
+		];
+		this.vertex_buffer = gl.createBuffer(gl.STATIC_DRAW, 3, gl.FLOAT, this.vertices);
+		this.texcoord_buffer = gl.createBuffer(gl.STATIC_DRAW, 2, gl.FLOAT, this.texcoords);
+		this.normal_buffer = gl.createBuffer(gl.STATIC_DRAW, 3, gl.FLOAT, this.normals);
+		
+	}
+		
+	
+	plane = new planeObject();
+	var drawPlane = function(){
+		gl.vertexPointer(plane.vertex_buffer);
+		gl.texCoordPointer(plane.texcoord_buffer);
+		gl.normalPointer(plane.normal_buffer);
+		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);
+	}
+	
+	// should probably switch this to use its own
+	// proper set of vertices, rather than running off the plane
+	var drawCube = function(){
+		gl.vertexPointer(plane.vertex_buffer);
+		gl.texCoordPointer(plane.texcoord_buffer);
+		gl.normalPointer(plane.normal_buffer);
+		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);
+		
+		gl.rotate(90, 1, 0, 0);
+		gl.translate(0, 1, 1);
+		gl.vertexPointer(plane.vertex_buffer);
+		gl.texCoordPointer(plane.texcoord_buffer);
+		gl.normalPointer(plane.normal_buffer);
+		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);		
+		
+		gl.rotate(90, 0, 1, 0);
+		gl.translate(1, 0, 1);
+		gl.vertexPointer(plane.vertex_buffer);
+		gl.texCoordPointer(plane.texcoord_buffer);
+		gl.normalPointer(plane.normal_buffer);
+		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);		
+
+		gl.rotate(90, 0, 1, 0);
+		gl.translate(1, 0, 1);
+		gl.vertexPointer(plane.vertex_buffer);
+		gl.texCoordPointer(plane.texcoord_buffer);
+		gl.normalPointer(plane.normal_buffer);
+		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);
+	
+		gl.rotate(90, 0, 1, 0);
+		gl.translate(1, 0, 1);
+		gl.vertexPointer(plane.vertex_buffer);
+		gl.texCoordPointer(plane.texcoord_buffer);
+		gl.normalPointer(plane.normal_buffer);
+		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);		
+
+		gl.rotate(90, 1, 0, 0);
+		gl.translate(0, -1, -1);
+		gl.vertexPointer(plane.vertex_buffer);
+		gl.texCoordPointer(plane.texcoord_buffer);
+		gl.normalPointer(plane.normal_buffer);
+		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);
+	}
+	
+	var t = 0;
+	var turn = 0;
+	var speed = 0.002;
+	var img_id = 0;
+	
+	setInterval(function() {
+		if (document.getElementById('pause').checked)
+			return;
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		
+		gl.loadIdentity();
+
+		// inital translation and rotation, should be linked to a camera object
+		gl.translate(0, 0, -30.0)
+		gl.rotate(45, 1, 1, 0);
+		
+		gl.pushMatrix();
+		gl.gluLookAt(
+				0, 0, 3.5,
+				0, 0, 0,
+				0, 1, 0);
+		
+		if(every_frame){
+			every_frame();
+		}
+				
+		gl.popMatrix();
+		gl.swapBuffers();
+		
+	}, 30);
+	
+	$("#code").keydown(function(eventObject){
+		insertTab(eventObject,this);
+	})
+	
+	$("#run_code").click(function(){
+		eval($("#code").val());
+	});
+});
+
+var every_frame = function(){
+	
+}
+window.addEventListener('load', function ()
+{
+
+}, false);
+
+window.loaded_first_script = true;
+</script>
+<script>
+if (! window.loaded_first_script)
+{
+	alert("Sorry, your browser does not support JavaScript 1.7");
+	var canvas = document.getElementById('c');
+	canvas.parentNode.replaceChild(canvas.firstChild, canvas); // oops, doesn't work in Opera
+}
+</script>
+
+<canvas width="800" height="600" id="c"></canvas>
+<textarea name="code" rows="8" cols="40" id='code' style='position:absolute;top:0;left:0;border:0;background:none;color:#fff;padding:10px;width:800px;height:600px;'></textarea>
+<p id='run_code'>run code</p>
+<form onsubmit="flush_buffer(); return false">
+<table>
+	<tr>
+		<td><label for="pause">Pause</label>
+		<td><input type="checkbox" id="pause">
+	</tr>
+</table>
+</form>
+code to be entered:
+<pre style='width:200px'>
+	var t = 0;
+	var turn = 0;
+	var speed = 0.002;
+	var img_id = 0;
+
+	every_frame = function(){
+		t++;
+		for(i=0;i&lt;3;i++){
+			// gl.rotate(speed*t*i*1.50, .8, .4, 0);
+			gl.translate(i*0.202*audioLevel, 0, 0);
+			gl.rotate(speed*t*502.3, 1, .4, .3);
+			drawCube();
+		}
+	}
+</pre>
+<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0" width="550" height="138" id="audioin" align="middle">
+<param name="allowScriptAccess" value="sameDomain" />
+<param name="movie" value="audioin.swf" /><param name="quality" value="high" /><param name="bgcolor" value="#666666" /><embed src="audioin.swf" quality="high" bgcolor="#666666" width="550" height="138" name="audioin" align="middle" allowScriptAccess="sameDomain" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" />
+</object>

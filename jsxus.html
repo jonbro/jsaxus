@@ -1,7 +1,9 @@
 <!DOCTYPE HTML>
 <!-- https://labs.mozilla.com/forum/index.php/topic,58.0.html -->
 <!-- http://canvex.lazyilluminati.com/misc/photos.html -->
-<title>JSXUS</title>
+<!-- todo: persistent storage of the scripts every time they are run, needs a light weight sketchbook/version control -->
+<!-- todo: mouse controlled translation / rotation of the entire scene -->
+<title>jsxus</title>
 
 <style>
 body {
@@ -26,7 +28,8 @@ var audioLevel = 0;
 var gl;
 function audioIn(level){
 	if(level>-1){
-		audioLevel = level;
+		// this smoothing is working but possibly not fast enough.
+		audioLevel = (level+audioLevel)/2;
 		// $("#bouncer").css({width:level});
 	}
 }
@@ -65,6 +68,37 @@ function insertTab(event,obj) {
     }
     return true;
 }
+function load_image(gl, img, title)
+{
+	var [id] = gl.genTextures(1);
+	gl.bindTexture(gl.TEXTURE_2D, id);
+	gl.texParameter(gl.TEXTURE_2D, gl.GENERATE_MIPMAP, true);
+	gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+	gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+	
+	if ((img.width & (img.width-1)) || (img.height & (img.height-1)))
+	{
+		// not power-of-two, so resize it using a 2d canvas
+		var w = next_pow2(img.width);
+		var h = next_pow2(img.height);
+		var canvas = document.createElement('canvas');
+		canvas.width = w;
+		canvas.height = h;
+		var ctx = canvas.getContext('2d');
+		ctx.drawImage(img, 0, 0, w, h);
+		gl.texImage2DHTML(gl.TEXTURE_2D, canvas);
+	}
+	else
+	{
+		gl.texImage2DHTML(gl.TEXTURE_2D, img);
+	}
+	image_buffer.push({ id:id, title:title });
+	status("Buffered " + image_buffer.length + " images");
+}
+function next_pow2(n)
+{
+	return Math.pow(2, Math.ceil(Math.log(n) / Math.LN2));
+}
 
 $(document).ready(function(){
 	// before loading the gl, set the canvas to full width
@@ -80,13 +114,14 @@ $(document).ready(function(){
 	every_frame = function(){
 		for(i=0;i<3;i++){
 			// gl.rotate(speed*t*i*1.50, .8, .4, 0);
-			gl.translate(i*0.202*audioLevel, 0, 0);
-			gl.rotate(speed*t*502.3, 1, .4, .3);
-			drawCube();
+			// gl.translate(i*0.202*audioLevel, 0, 0);
+			// gl.rotate(170, 0, 1, 0);
+			// gl.rotate(speed*t*502.3, 1, .4, .3);
+			drawPlane();
 		}
 
 	}
-	var background = [0, 0, 0, 1];
+	var background = [0, 0, 0, 0];
 	// var background = [1, 1, 1, 1];
 
 
@@ -101,20 +136,26 @@ $(document).ready(function(){
 	gl.enable(gl.DEPTH_TEST);
 	gl.cullFace(gl.BACK);
 	gl.enable(gl.CULL_FACE);
+	gl.enable(gl.TEXTURE_2D);
 	
 	gl.enable(gl.LIGHTING);
 	gl.light(gl.LIGHT0, gl.AMBIENT, [1, 1, 1, 1]);
 	gl.light(gl.LIGHT0, gl.DIFFUSE, [1, 1, 1, 1]);
 	gl.light(gl.LIGHT0, gl.POSITION, [100, 0, 500, 0]);
 	gl.light(gl.LIGHT0, gl.SPECULAR, [1, 1, 1, 1]);
-	gl.material(gl.FRONT_AND_BACK, gl.SPECULAR, [1,1,1,1]);
-	gl.material(gl.FRONT_AND_BACK, gl.SHININESS, 12);
+	
+	// gl.material(gl.FRONT_AND_BACK, gl.SPECULAR, [1,0,0,0.4]);
+	// gl.material(gl.FRONT_AND_BACK, gl.SHININESS, 0);
+	// gl.enable(gl.MATERIAL0);
 	
 	gl.enable(gl.LIGHT0);
 
+
+ 
 	gl.enableClientState(gl.VERTEX_ARRAY);
-	gl.enableClientState(gl.TEXTURE_COORD_ARRAY);
 	gl.enableClientState(gl.NORMAL_ARRAY);
+	gl.enableClientState(gl.COLOR_ARRAY);
+	gl.enableClientState(gl.TEXTURE_COORD_ARRAY);
 
 	planeObject = function(){
 		this.vertices = [
@@ -136,63 +177,59 @@ $(document).ready(function(){
 			0,0,-1, 0,0,-1, 0,0,-1,
 			0,0,-1, 0,0,-1, 0,0,-1,
 		];
+		this.colors = [
+			1,0,1,1, 0,0,1,1, 1,0,1,1,
+			1,0,1,1, 0,0,1,1, 1,0,1,1,
+			1,0,1,1, 0,0,1,1, 1,0,1,1,
+			1,0,1,1, 0,0,1,1, 1,0,1,1,
+		];
 		this.vertex_buffer = gl.createBuffer(gl.STATIC_DRAW, 3, gl.FLOAT, this.vertices);
 		this.texcoord_buffer = gl.createBuffer(gl.STATIC_DRAW, 2, gl.FLOAT, this.texcoords);
 		this.normal_buffer = gl.createBuffer(gl.STATIC_DRAW, 3, gl.FLOAT, this.normals);
+		this.color_buffer = gl.createBuffer(gl.STATIC_DRAW, 4, gl.FLOAT, this.colors);
 		
 	}
-		
 	
+	var color = function(r, g, b, a){
+		gl.material(gl.FRONT_AND_BACK, gl.AMBIENT, [r, g, b, a]);		
+	}
+
 	plane = new planeObject();
 	var drawPlane = function(){
 		gl.vertexPointer(plane.vertex_buffer);
 		gl.texCoordPointer(plane.texcoord_buffer);
 		gl.normalPointer(plane.normal_buffer);
+		gl.colorPointer(plane.color_buffer);
+		// if we are doing wireframe mode
+		// gl.drawArrays(gl.LINES, 0, plane.vertices.length / 3);
+		
 		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);
 	}
 	
 	// should probably switch this to use its own
 	// proper set of vertices, rather than running off the plane
 	var drawCube = function(){
-		gl.vertexPointer(plane.vertex_buffer);
-		gl.texCoordPointer(plane.texcoord_buffer);
-		gl.normalPointer(plane.normal_buffer);
-		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);
+		drawPlane();		
 		
 		gl.rotate(90, 1, 0, 0);
 		gl.translate(0, 1, 1);
-		gl.vertexPointer(plane.vertex_buffer);
-		gl.texCoordPointer(plane.texcoord_buffer);
-		gl.normalPointer(plane.normal_buffer);
-		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);		
+		drawPlane();		
 		
 		gl.rotate(90, 0, 1, 0);
 		gl.translate(1, 0, 1);
-		gl.vertexPointer(plane.vertex_buffer);
-		gl.texCoordPointer(plane.texcoord_buffer);
-		gl.normalPointer(plane.normal_buffer);
-		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);		
+		drawPlane();		
 
 		gl.rotate(90, 0, 1, 0);
 		gl.translate(1, 0, 1);
-		gl.vertexPointer(plane.vertex_buffer);
-		gl.texCoordPointer(plane.texcoord_buffer);
-		gl.normalPointer(plane.normal_buffer);
-		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);
+		drawPlane();		
 	
 		gl.rotate(90, 0, 1, 0);
 		gl.translate(1, 0, 1);
-		gl.vertexPointer(plane.vertex_buffer);
-		gl.texCoordPointer(plane.texcoord_buffer);
-		gl.normalPointer(plane.normal_buffer);
-		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);		
+		drawPlane();		
 
 		gl.rotate(90, 1, 0, 0);
 		gl.translate(0, -1, -1);
-		gl.vertexPointer(plane.vertex_buffer);
-		gl.texCoordPointer(plane.texcoord_buffer);
-		gl.normalPointer(plane.normal_buffer);
-		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);
+		drawPlane();		
 	}
 	
 	var t = 0;
@@ -203,6 +240,13 @@ $(document).ready(function(){
 	setInterval(function() {
 		if (document.getElementById('pause').checked)
 			return;
+
+		let title = 'thing';
+		var i = new Image();
+		i.onload = function () { load_image(gl, this, title) };
+		i.src = "http://www.heathersanimations.com/dance2/01.gif";		
+		
+		
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 		
 		gl.loadIdentity();
@@ -281,7 +325,32 @@ code to be entered:
 			drawCube();
 		}
 	}
+	
+	//more code:
+	var t=0;
+	every_frame = function(){
+		t += audioLevel;
+		gl.translate(-10,-10, 0);
+		//gl.rotate(290*t*.03, 1, .5, .4);
+		for(i=0;i&lt;5;i++){
+			for(j=0;j&lt;5;j++){
+				gl.pushMatrix();
+				gl.rotate(20*j*audioLevel, 1, .4, 0);
+				gl.translate(0, 0, -j*5);
+				for(k=0;k&lt;3*audioLevel+1;k++){
+					gl.pushMatrix();
+					gl.translate(i*2.4*audioLevel, j*3.7*audioLevel, k*2.9*audioLevel);
+					drawCube();
+					gl.popMatrix();
+
+				}
+				gl.popMatrix();
+			}
+		}
+	}
+	
 </pre>
+<img src='http://farm3.static.flickr.com/2380/2377064406_2366ab8d2d.jpg?v=0' id='texture_map'/>
 <object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0" width="550" height="138" id="audioin" align="middle">
 <param name="allowScriptAccess" value="sameDomain" />
 <param name="movie" value="audioin.swf" /><param name="quality" value="high" /><param name="bgcolor" value="#666666" /><embed src="audioin.swf" quality="high" bgcolor="#666666" width="550" height="138" name="audioin" align="middle" allowScriptAccess="sameDomain" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" />

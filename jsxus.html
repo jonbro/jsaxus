@@ -24,17 +24,22 @@ small {
 <script src="jquery-1.2.3.min.js" type="text/javascript" charset="utf-8"></script>
 
 <script type="application/javascript;version=1.7">
-var audioLevel = 0;
+var audiolevel = 0;
 var gl;
 function audioIn(level){
 	if(level>-1){
 		// this smoothing is working but possibly not fast enough.
-		audioLevel = (level+audioLevel)/2;
+		audiolevel = (level+audiolevel)/2;
 		// $("#bouncer").css({width:level});
 	}
 }
 
 //tabs in text area script cribbed from: http://l4x.org/261/
+Number.prototype.times = function(F){
+	for(var i=0;i<this;i++){
+		F(i);
+	}
+}
 
 function insertTab(event,obj) {
     var tabKeyCode = 9;
@@ -68,6 +73,7 @@ function insertTab(event,obj) {
     }
     return true;
 }
+
 function load_image(gl, img, title)
 {
 	var [id] = gl.genTextures(1);
@@ -95,12 +101,30 @@ function load_image(gl, img, title)
 	image_buffer.push({ id:id, title:title });
 	status("Buffered " + image_buffer.length + " images");
 }
+
 function next_pow2(n)
 {
 	return Math.pow(2, Math.ceil(Math.log(n) / Math.LN2));
 }
-
+var lastkey = "";
 $(document).ready(function(){
+	 $(document).keydown(function(e){
+		if(lastkey == 17 && e.which==75){
+			// console.log(e.which);
+			eval($("#code").val());
+			return false;
+		}else{
+			lastkey = e.which;
+		}
+	});
+	$(document).keyup(function(e){
+		// console.log(lastkey);
+		
+		if(e.which==17){
+			lastkey = 0;
+		}
+	});
+	
 	// before loading the gl, set the canvas to full width
 	// $('#c').css({width:100%});
 	var canvas = document.getElementById('c');
@@ -111,10 +135,10 @@ $(document).ready(function(){
 		canvas.parentNode.replaceChild(canvas.firstChild, canvas);
 		return;
 	}
-	every_frame = function(){
+	everyframe = function(){
 		for(i=0;i<3;i++){
 			// gl.rotate(speed*t*i*1.50, .8, .4, 0);
-			// gl.translate(i*0.202*audioLevel, 0, 0);
+			// gl.translate(i*0.202*audiolevel, 0, 0);
 			// gl.rotate(170, 0, 1, 0);
 			// gl.rotate(speed*t*502.3, 1, .4, .3);
 			drawPlane();
@@ -138,6 +162,9 @@ $(document).ready(function(){
 	gl.enable(gl.CULL_FACE);
 	gl.enable(gl.TEXTURE_2D);
 	
+
+	// gl.enable(gl.BLEND);
+	// gl.blendFunc(gl.ONE, gl.ONE);
 	gl.enable(gl.LIGHTING);
 	gl.light(gl.LIGHT0, gl.AMBIENT, [1, 1, 1, 1]);
 	gl.light(gl.LIGHT0, gl.DIFFUSE, [1, 1, 1, 1]);
@@ -193,7 +220,21 @@ $(document).ready(function(){
 	var color = function(r, g, b, a){
 		gl.material(gl.FRONT_AND_BACK, gl.AMBIENT, [r, g, b, a]);		
 	}
-
+	var scale = function(x, y, z){
+		gl.scale(x, y, z);
+	}
+	var translate = function(x, y, z){
+		gl.translate(x, y, z);
+	}
+	var rotate = function(a, x, y, z){
+		gl.rotate(a, x, y, z);
+	}
+	var push = function(){
+		gl.pushMatrix();
+	}
+	var pop = function(){
+		gl.popMatrix();
+	}
 	plane = new planeObject();
 	var drawPlane = function(){
 		gl.vertexPointer(plane.vertex_buffer);
@@ -208,7 +249,7 @@ $(document).ready(function(){
 	
 	// should probably switch this to use its own
 	// proper set of vertices, rather than running off the plane
-	var drawCube = function(){
+	var drawcube = function(){
 		drawPlane();		
 		
 		gl.rotate(90, 1, 0, 0);
@@ -237,15 +278,21 @@ $(document).ready(function(){
 	var speed = 0.002;
 	var img_id = 0;
 	
+	var tex = function(img_id){
+		// this isn't working for shit, will crash your browser. should seperate into a loader function and a draw function.
+		var i = new Image();
+		var title = 'thing';
+		i.onload = function () { load_image(gl, this, title) };
+		i.src = $('#'+img_id).eq(0).attr("src");
+		// i.src = "http://www.heathersanimations.com/dance2/01.gif";		
+		
+	}
+	
 	setInterval(function() {
 		if (document.getElementById('pause').checked)
 			return;
 
-		let title = 'thing';
-		var i = new Image();
-		i.onload = function () { load_image(gl, this, title) };
-		i.src = "http://www.heathersanimations.com/dance2/01.gif";		
-		
+		// 
 		
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 		
@@ -261,8 +308,8 @@ $(document).ready(function(){
 				0, 0, 0,
 				0, 1, 0);
 		
-		if(every_frame){
-			every_frame();
+		if(everyframe){
+			everyframe();
 		}
 				
 		gl.popMatrix();
@@ -279,7 +326,7 @@ $(document).ready(function(){
 	});
 });
 
-var every_frame = function(){
+var everyframe = function(){
 	
 }
 window.addEventListener('load', function ()
@@ -299,6 +346,11 @@ if (! window.loaded_first_script)
 </script>
 
 <canvas width="800" height="600" id="c"></canvas>
+<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0" width="550" height="138" id="audioin" align="middle">
+<param name="allowScriptAccess" value="sameDomain" />
+<param name="movie" value="audioin.swf" /><param name="quality" value="high" /><param name="bgcolor" value="#666666" /><embed src="audioin.swf" quality="high" bgcolor="#666666" width="550" height="138" name="audioin" align="middle" allowScriptAccess="sameDomain" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" />
+</object>
+
 <textarea name="code" rows="8" cols="40" id='code' style='position:absolute;top:0;left:0;border:0;background:none;color:#fff;padding:10px;width:800px;height:600px;'></textarea>
 <p id='run_code'>run code</p>
 <form onsubmit="flush_buffer(); return false">
@@ -309,38 +361,41 @@ if (! window.loaded_first_script)
 	</tr>
 </table>
 </form>
+
+<h2>Ctrl+K to run</h2>
+
 code to be entered:
 <pre style='width:200px'>
 	var t = 0;
 	var turn = 0;
 	var speed = 0.002;
 	var img_id = 0;
-
-	every_frame = function(){
+	
+	everyframe = function(){
 		t++;
 		for(i=0;i&lt;3;i++){
 			// gl.rotate(speed*t*i*1.50, .8, .4, 0);
-			gl.translate(i*0.202*audioLevel, 0, 0);
+			gl.translate(i*0.202*audiolevel, 0, 0);
 			gl.rotate(speed*t*502.3, 1, .4, .3);
-			drawCube();
+			drawcube();
 		}
 	}
 	
 	//more code:
 	var t=0;
-	every_frame = function(){
-		t += audioLevel;
+	everyframe = function(){
+		t += audiolevel;
 		gl.translate(-10,-10, 0);
 		//gl.rotate(290*t*.03, 1, .5, .4);
 		for(i=0;i&lt;5;i++){
 			for(j=0;j&lt;5;j++){
 				gl.pushMatrix();
-				gl.rotate(20*j*audioLevel, 1, .4, 0);
+				gl.rotate(20*j*audiolevel, 1, .4, 0);
 				gl.translate(0, 0, -j*5);
-				for(k=0;k&lt;3*audioLevel+1;k++){
+				for(k=0;k&lt;3*audiolevel+1;k++){
 					gl.pushMatrix();
-					gl.translate(i*2.4*audioLevel, j*3.7*audioLevel, k*2.9*audioLevel);
-					drawCube();
+					gl.translate(i*2.4*audiolevel, j*3.7*audiolevel, k*2.9*audiolevel);
+					drawcube();
 					gl.popMatrix();
 
 				}
@@ -351,7 +406,3 @@ code to be entered:
 	
 </pre>
 <img src='http://farm3.static.flickr.com/2380/2377064406_2366ab8d2d.jpg?v=0' id='texture_map'/>
-<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0" width="550" height="138" id="audioin" align="middle">
-<param name="allowScriptAccess" value="sameDomain" />
-<param name="movie" value="audioin.swf" /><param name="quality" value="high" /><param name="bgcolor" value="#666666" /><embed src="audioin.swf" quality="high" bgcolor="#666666" width="550" height="138" name="audioin" align="middle" allowScriptAccess="sameDomain" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" />
-</object>

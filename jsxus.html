@@ -141,7 +141,7 @@ $(document).ready(function(){
 			// gl.translate(i*0.202*audiolevel, 0, 0);
 			// gl.rotate(170, 0, 1, 0);
 			// gl.rotate(speed*t*502.3, 1, .4, .3);
-			drawPlane();
+			drawplane();
 		}
 
 	}
@@ -236,7 +236,7 @@ $(document).ready(function(){
 		gl.popMatrix();
 	}
 	plane = new planeObject();
-	var drawPlane = function(){
+	var drawplane = function(){
 		gl.vertexPointer(plane.vertex_buffer);
 		gl.texCoordPointer(plane.texcoord_buffer);
 		gl.normalPointer(plane.normal_buffer);
@@ -250,27 +250,27 @@ $(document).ready(function(){
 	// should probably switch this to use its own
 	// proper set of vertices, rather than running off the plane
 	var drawcube = function(){
-		drawPlane();		
+		drawplane();		
 		
 		gl.rotate(90, 1, 0, 0);
 		gl.translate(0, 1, 1);
-		drawPlane();		
+		drawplane();		
 		
 		gl.rotate(90, 0, 1, 0);
 		gl.translate(1, 0, 1);
-		drawPlane();		
+		drawplane();		
 
 		gl.rotate(90, 0, 1, 0);
 		gl.translate(1, 0, 1);
-		drawPlane();		
+		drawplane();		
 	
 		gl.rotate(90, 0, 1, 0);
 		gl.translate(1, 0, 1);
-		drawPlane();		
+		drawplane();		
 
 		gl.rotate(90, 1, 0, 0);
 		gl.translate(0, -1, -1);
-		drawPlane();		
+		drawplane();		
 	}
 	
 	var t = 0;

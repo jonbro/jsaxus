@@ -22,10 +22,14 @@ small {
 }
 </style>
 <script src="jquery-1.2.3.min.js" type="text/javascript" charset="utf-8"></script>
+<script src="Log.js" type="text/javascript" charset="utf-8"></script>
+<script src="Matrix.js" type="text/javascript" charset="utf-8"></script>
+<script src="Vector.js" type="text/javascript" charset="utf-8"></script>
+<script src="helpers.js" type="text/javascript" charset="utf-8"></script>
+<script src="startup.js" type="text/javascript" charset="utf-8"></script>
 
 <script type="application/javascript;version=1.7">
 var audiolevel = 0;
-var gl;
 function audioIn(level){
 	if(level>-1){
 		// this smoothing is working but possibly not fast enough.
@@ -74,40 +78,8 @@ function insertTab(event,obj) {
     return true;
 }
 
-function load_image(gl, img, title)
-{
-	var [id] = gl.genTextures(1);
-	gl.bindTexture(gl.TEXTURE_2D, id);
-	gl.texParameter(gl.TEXTURE_2D, gl.GENERATE_MIPMAP, true);
-	gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-	gl.texParameter(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-	
-	if ((img.width & (img.width-1)) || (img.height & (img.height-1)))
-	{
-		// not power-of-two, so resize it using a 2d canvas
-		var w = next_pow2(img.width);
-		var h = next_pow2(img.height);
-		var canvas = document.createElement('canvas');
-		canvas.width = w;
-		canvas.height = h;
-		var ctx = canvas.getContext('2d');
-		ctx.drawImage(img, 0, 0, w, h);
-		gl.texImage2DHTML(gl.TEXTURE_2D, canvas);
-	}
-	else
-	{
-		gl.texImage2DHTML(gl.TEXTURE_2D, img);
-	}
-	image_buffer.push({ id:id, title:title });
-	status("Buffered " + image_buffer.length + " images");
-}
-
-function next_pow2(n)
-{
-	return Math.pow(2, Math.ceil(Math.log(n) / Math.LN2));
-}
-var lastkey = "";
 $(document).ready(function(){
+	var lastkey = 0
 	 $(document).keydown(function(e){
 		if(lastkey == 17 && e.which==75){
 			// console.log(e.which);
@@ -127,164 +99,105 @@ $(document).ready(function(){
 	
 	// before loading the gl, set the canvas to full width
 	// $('#c').css({width:100%});
-	var canvas = document.getElementById('c');
-	try {gl = canvas.getContext('moz-gles11'); } catch (e) {}
-	if (! gl)
-	{
-		alert("Sorry, your browser does not have the moz-gles11 canvas extension");
-		canvas.parentNode.replaceChild(canvas.firstChild, canvas);
-		return;
-	}
 	everyframe = function(){
 		for(i=0;i<3;i++){
 			// gl.rotate(speed*t*i*1.50, .8, .4, 0);
 			// gl.translate(i*0.202*audiolevel, 0, 0);
 			// gl.rotate(170, 0, 1, 0);
 			// gl.rotate(speed*t*502.3, 1, .4, .3);
-			drawplane();
+			// drawplane();
 		}
 
 	}
 	var background = [0, 0, 0, 0];
 	// var background = [1, 1, 1, 1];
-
-
-	gl.matrixMode(gl.PROJECTION);
-	gl.loadIdentity();
-	gl.gluPerspective(45, 1, 0.1, 100);
-
-	gl.matrixMode(gl.MODELVIEW);
-
-	gl.clearColor(background[0], background[1], background[2], 1);
-
-	gl.enable(gl.DEPTH_TEST);
-	gl.cullFace(gl.BACK);
-	gl.enable(gl.CULL_FACE);
-	gl.enable(gl.TEXTURE_2D);
+	startup();
+	var drawcube = function (){
 	
-
-	// gl.enable(gl.BLEND);
-	// gl.blendFunc(gl.ONE, gl.ONE);
-	gl.enable(gl.LIGHTING);
-	gl.light(gl.LIGHT0, gl.AMBIENT, [1, 1, 1, 1]);
-	gl.light(gl.LIGHT0, gl.DIFFUSE, [1, 1, 1, 1]);
-	gl.light(gl.LIGHT0, gl.POSITION, [100, 0, 500, 0]);
-	gl.light(gl.LIGHT0, gl.SPECULAR, [1, 1, 1, 1]);
-	
-	// gl.material(gl.FRONT_AND_BACK, gl.SPECULAR, [1,0,0,0.4]);
-	// gl.material(gl.FRONT_AND_BACK, gl.SHININESS, 0);
-	// gl.enable(gl.MATERIAL0);
-	
-	gl.enable(gl.LIGHT0);
-
-
- 
-	gl.enableClientState(gl.VERTEX_ARRAY);
-	gl.enableClientState(gl.NORMAL_ARRAY);
-	gl.enableClientState(gl.COLOR_ARRAY);
-	gl.enableClientState(gl.TEXTURE_COORD_ARRAY);
-
-	planeObject = function(){
-		this.vertices = [
-			-1,-1,0, 1,-1,0, -1,1,0,
-			-1,1,0, 1,-1,0, 1,1,0,
-
-			1,-1,0, -1,-1,0, -1,1,0,
-			1,-1,0, -1,1,0, 1,1,0,
-		];
-		this.texcoords = [
-			0,1, 1,1, 0,0,
-			0,0, 1,1, 1,0,
-			0,1, 1,1, 1,0,
-		   	0,1, 1,0, 0,0,
-		];
-		this.normals = [
-			0,0,1, 0,0,1, 0,0,1,
-			0,0,1, 0,0,1, 0,0,1,
-			0,0,-1, 0,0,-1, 0,0,-1,
-			0,0,-1, 0,0,-1, 0,0,-1,
-		];
-		this.colors = [
-			1,0,1,1, 0,0,1,1, 1,0,1,1,
-			1,0,1,1, 0,0,1,1, 1,0,1,1,
-			1,0,1,1, 0,0,1,1, 1,0,1,1,
-			1,0,1,1, 0,0,1,1, 1,0,1,1,
-		];
-		this.vertex_buffer = gl.createBuffer(gl.STATIC_DRAW, 3, gl.FLOAT, this.vertices);
-		this.texcoord_buffer = gl.createBuffer(gl.STATIC_DRAW, 2, gl.FLOAT, this.texcoords);
-		this.normal_buffer = gl.createBuffer(gl.STATIC_DRAW, 3, gl.FLOAT, this.normals);
-		this.color_buffer = gl.createBuffer(gl.STATIC_DRAW, 4, gl.FLOAT, this.colors);
+		var buffers = {};
+		var vertArray = new Array();
+		var normArray = new Array();
+		var colorArray = new Array();
 		
-	}
-	
-	var color = function(r, g, b, a){
-		gl.material(gl.FRONT_AND_BACK, gl.AMBIENT, [r, g, b, a]);		
-	}
-	var scale = function(x, y, z){
-		gl.scale(x, y, z);
-	}
-	var translate = function(x, y, z){
-		gl.translate(x, y, z);
-	}
-	var rotate = function(a, x, y, z){
-		gl.rotate(a, x, y, z);
-	}
-	var push = function(){
-		gl.pushMatrix();
-	}
-	var pop = function(){
-		gl.popMatrix();
-	}
-	plane = new planeObject();
-	var drawplane = function(){
-		gl.vertexPointer(plane.vertex_buffer);
-		gl.texCoordPointer(plane.texcoord_buffer);
-		gl.normalPointer(plane.normal_buffer);
-		gl.colorPointer(plane.color_buffer);
-		// if we are doing wireframe mode
-		// gl.drawArrays(gl.LINES, 0, plane.vertices.length / 3);
+		var m = makeIdentityMatrix();
 		
-		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);
-	}
-	
-	// should probably switch this to use its own
-	// proper set of vertices, rather than running off the plane
-	var drawcube = function(){
-		drawplane();		
-		
-		gl.rotate(90, 1, 0, 0);
-		gl.translate(0, 1, 1);
-		drawplane();		
-		
-		gl.rotate(90, 0, 1, 0);
-		gl.translate(1, 0, 1);
-		drawplane();		
+		// scale  left up and dir vectors which are used to setup the vertex list
+		this.left = multiplyMatrixByVector(m, new Array(1.0,0,0));	
+		this.up = multiplyMatrixByVector(m, Array(0,1.0,0));		
+		this.dir = multiplyMatrixByVector(m, Array(0,0,1.0));
 
-		gl.rotate(90, 0, 1, 0);
-		gl.translate(1, 0, 1);
-		drawplane();		
+		// This would be easier if we had an Index Buffer
+		var vecArr = [this.up,					this.left,					this.dir,				// 1
+					  this.up,					this.left,					multiplyVector(this.dir, -1.0),	// 2
+					  this.up,					multiplyVector(this.left, -1.0),	multiplyVector(this.dir, -1.0),	// 3
+					  multiplyVector(this.up, -1.0),	multiplyVector(this.left, -1.0),	multiplyVector(this.dir, -1.0),	// 4						  
+					  this.up,					multiplyVector(this.left, -1.0),	this.dir,				// 5						  
+					  multiplyVector(this.up, -1.0),	multiplyVector(this.left, -1.0),	this.dir,				// 6						  
+					  multiplyVector(this.up, -1.0),	this.left,					this.dir,				// 7						  
+					  multiplyVector(this.up, -1.0),	multiplyVector(this.left, -1.0),	multiplyVector(this.dir, -1.0),	// 8						  
+					  multiplyVector(this.up, -1.0),	this.left,					multiplyVector(this.dir, -1.0),	// 9						  
+					  this.up,					this.left,					multiplyVector(this.dir, -1.0),	// 10						  
+					  multiplyVector(this.up, -1.0),	this.left,					this.dir,				// 11						  
+					  this.up,					this.left,					this.dir,				// 12						  
+					  this.up,					multiplyVector(this.left, -1.0),	this.dir,				// 13						  
+					  this.up,					multiplyVector(this.left, -1.0),	multiplyVector(this.dir, -1.0)	// 14
+					 ];
 	
-		gl.rotate(90, 0, 1, 0);
-		gl.translate(1, 0, 1);
-		drawplane();		
+		// Using the vectors above, calculate the verticies
+		for (var i = 0; i < (14 * 3); i += 3)
+		{
+			this.pos = new Array(0.0, 0.0, 0.0);
+			var v = makeVector();
+			v = addVectors(this.pos, vecArr[i]);
+			v = addVectors(v, vecArr[i + 1]);
+			v = addVectors(v, vecArr[i + 2]);
+			// console.log(v);
+			// Set the individual Vertex Coords
+			vertArray.push(v[0]);
+			vertArray.push(v[1]);
+			vertArray.push(v[2]);
+		
+			// Calculate the Normals
+			var n = new Array(0.0, 0.0, 0.0);
+			n = addVectors(v, this.pos).slice();
+			n = normalizeVector(n);
+		
+			normArray.push(n[0]);
+			normArray.push(n[1]);
+			normArray.push(n[2]);
+		
+			// Set some colors
+			colorArray.push(0.2); // R
+			colorArray.push(0.4); // G
+			colorArray.push(0.7); // B
+			colorArray.push(1);	  // A
+		}
+	
 
-		gl.rotate(90, 1, 0, 0);
-		gl.translate(0, -1, -1);
-		drawplane();		
-	}
+		// Create Buffers
+		buffers.vertex = gl.createBuffer(gl.STATIC_DRAW, 3, gl.FLOAT, vertArray);
+		buffers.normal = gl.createBuffer(gl.STATIC_DRAW, 3, gl.FLOAT, normArray);
+		buffers.color = gl.createBuffer(gl.STATIC_DRAW, 4, gl.FLOAT, colorArray);
 	
-	var t = 0;
-	var turn = 0;
-	var speed = 0.002;
-	var img_id = 0;
+		// Apply the buffers to OpenGL
+		gl.enable(gl.CULL_FACE);
+		gl.frontFace(gl.CCW);
+		gl.vertexPointer(buffers.vertex);
+		gl.normalPointer(buffers.normal);
+		gl.colorPointer(buffers.color);
 	
-	var tex = function(img_id){
-		// this isn't working for shit, will crash your browser. should seperate into a loader function and a draw function.
-		var i = new Image();
-		var title = 'thing';
-		i.onload = function () { load_image(gl, this, title) };
-		i.src = $('#'+img_id).eq(0).attr("src");
-		// i.src = "http://www.heathersanimations.com/dance2/01.gif";		
+		// Flag OpenGL that we will be using buffers
+		gl.enableClientState(gl.VERTEX_ARRAY);
+		gl.enableClientState(gl.NORMAL_ARRAY);
+		gl.enableClientState(gl.COLOR_ARRAY);
+	
+		// Draw
+		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 14);
+	
+		// Turn off Buffers
+		gl.disableClientState(gl.VERTEX_ARRAY);
+		gl.disableClientState(gl.NORMAL_ARRAY);
+		gl.disableClientState(gl.COLOR_ARRAY);	
 		
 	}
 	
@@ -293,28 +206,28 @@ $(document).ready(function(){
 			return;
 
 		// 
+		gl.clearColor(0.1, 0.1, 0.1, 1.0);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT);
 		
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		// Set the camera in world space
+		// camera.applyToWorld(gl, thisScn);
+		gl.loadIdentity();	
+		var pos = new Array(5.0, 0.0, -5.0);	
+		var dir = new Array(-5.0, 0.0, 5.0);
+		var left = vectorCrossProduct(dir, new Array(0.0, 1.0, 0.0));
+		var up = vectorCrossProduct(dir, multiplyVector(left, -1.0));
 		
-		gl.loadIdentity();
-
-		// inital translation and rotation, should be linked to a camera object
-		gl.translate(0, 0, -30.0)
-		gl.rotate(45, 1, 1, 0);
+		gl.multMatrix(lookAt(pos, dir, up));
+		gl.translate(-pos[0], -pos[1], -pos[2]);
 		
-		gl.pushMatrix();
-		gl.gluLookAt(
-				0, 0, 3.5,
-				0, 0, 0,
-				0, 1, 0);
-		
+		// Do Rendering
 		if(everyframe){
 			everyframe();
 		}
-				
-		gl.popMatrix();
-		gl.swapBuffers();
 		
+		// Swap buffers to render
+		gl.swapBuffers();
+						
 	}, 30);
 	
 	$("#code").keydown(function(eventObject){

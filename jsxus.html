@@ -167,9 +167,9 @@ $(document).ready(function(){
 			normArray.push(n[2]);
 		
 			// Set some colors
-			colorArray.push(0.2); // R
-			colorArray.push(0.4); // G
-			colorArray.push(0.7); // B
+			colorArray.push(1.0); // R
+			colorArray.push(0.0); // G
+			colorArray.push(0.0); // B
 			colorArray.push(1);	  // A
 		}
 	
@@ -180,25 +180,67 @@ $(document).ready(function(){
 		buffers.color = gl.createBuffer(gl.STATIC_DRAW, 4, gl.FLOAT, colorArray);
 	
 		// Apply the buffers to OpenGL
-		gl.enable(gl.CULL_FACE);
-		gl.frontFace(gl.CCW);
 		gl.vertexPointer(buffers.vertex);
 		gl.normalPointer(buffers.normal);
 		gl.colorPointer(buffers.color);
 	
 		// Flag OpenGL that we will be using buffers
-		gl.enableClientState(gl.VERTEX_ARRAY);
-		gl.enableClientState(gl.NORMAL_ARRAY);
-		gl.enableClientState(gl.COLOR_ARRAY);
 	
 		// Draw
+		//gl.drawArrays(gl.LINES, 0, 14);
+		
 		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 14);
 	
 		// Turn off Buffers
-		gl.disableClientState(gl.VERTEX_ARRAY);
-		gl.disableClientState(gl.NORMAL_ARRAY);
-		gl.disableClientState(gl.COLOR_ARRAY);	
 		
+	}
+	planeObject = function(){
+		this.vertices = [
+			-1,-1,0, 1,-1,0, -1,1,0,
+			-1,1,0, 1,-1,0, 1,1,0,
+
+			1,-1,0, -1,-1,0, -1,1,0,
+			1,-1,0, -1,1,0, 1,1,0,
+		];
+		this.texcoords = [
+			0,1, 1,1, 0,0,
+			0,0, 1,1, 1,0,
+			0,1, 1,1, 1,0,
+		   	0,1, 1,0, 0,0,
+		];
+		this.normals = [
+			0,0,1, 0,0,1, 0,0,1,
+			0,0,1, 0,0,1, 0,0,1,
+			0,0,-1, 0,0,-1, 0,0,-1,
+			0,0,-1, 0,0,-1, 0,0,-1,
+		];
+		this.colors = [
+			1,0,1,1, 0,0,1,1, 1,0,1,1,
+			1,0,1,1, 0,0,1,1, 1,0,1,1,
+			1,0,1,1, 0,0,1,1, 1,0,1,1,
+			1,0,1,1, 0,0,1,1, 1,0,1,1,
+		];
+		this.vertex_buffer = gl.createBuffer(gl.STATIC_DRAW, 3, gl.FLOAT, this.vertices);
+		this.texcoord_buffer = gl.createBuffer(gl.STATIC_DRAW, 2, gl.FLOAT, this.texcoords);
+		this.normal_buffer = gl.createBuffer(gl.STATIC_DRAW, 3, gl.FLOAT, this.normals);
+		this.color_buffer = gl.createBuffer(gl.STATIC_DRAW, 4, gl.FLOAT, this.colors);
+		
+	}
+	
+	var color = function(r, g, b, a){
+		gl.material(gl.FRONT_AND_BACK, gl.AMBIENT, [r, g, b, a]);		
+	}
+
+	plane = new planeObject();
+	var drawplane = function(){
+		gl.vertexPointer(plane.vertex_buffer);
+		gl.texCoordPointer(plane.texcoord_buffer);
+		gl.normalPointer(plane.normal_buffer);
+		gl.colorPointer(plane.color_buffer);
+		// if we are doing wireframe mode
+		// gl.drawArrays(gl.LINES, 0, plane.vertices.length / 3);
+		
+		gl.drawArrays(gl.TRIANGLES, 0, plane.vertices.length / 3);
 	}
 	
 	setInterval(function() {
@@ -207,11 +249,12 @@ $(document).ready(function(){
 
 		// 
 		gl.clearColor(0.1, 0.1, 0.1, 1.0);
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT);
-		
+		gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
+		// gl.enable(gl.DEPTH_TEST)
 		// Set the camera in world space
 		// camera.applyToWorld(gl, thisScn);
-		gl.loadIdentity();	
+		
+		gl.loadIdentity();
 		var pos = new Array(5.0, 0.0, -5.0);	
 		var dir = new Array(-5.0, 0.0, 5.0);
 		var left = vectorCrossProduct(dir, new Array(0.0, 1.0, 0.0));
@@ -219,7 +262,9 @@ $(document).ready(function(){
 		
 		gl.multMatrix(lookAt(pos, dir, up));
 		gl.translate(-pos[0], -pos[1], -pos[2]);
-		
+		gl.enableClientState(gl.VERTEX_ARRAY);
+		gl.enableClientState(gl.NORMAL_ARRAY);
+		gl.enableClientState(gl.COLOR_ARRAY);
 		// Do Rendering
 		if(everyframe){
 			everyframe();
@@ -227,6 +272,9 @@ $(document).ready(function(){
 		
 		// Swap buffers to render
 		gl.swapBuffers();
+		gl.disableClientState(gl.VERTEX_ARRAY);
+		gl.disableClientState(gl.NORMAL_ARRAY);
+		gl.disableClientState(gl.COLOR_ARRAY);	
 						
 	}, 30);
 	
@@ -237,10 +285,17 @@ $(document).ready(function(){
 	$("#run_code").click(function(){
 		eval($("#code").val());
 	});
-});
-
-var everyframe = function(){
+	var t = 0;
+	everyframe = function(){
+			gl.rotate(t, 0, 1, 0);
+			drawcube();	
+			gl.translate(-3, 0, 0);
+			drawcube();
+			t++;
+	}
 	
+});
+var everyframe = function(){
 }
 window.addEventListener('load', function ()
 {
@@ -263,7 +318,6 @@ if (! window.loaded_first_script)
 <param name="allowScriptAccess" value="sameDomain" />
 <param name="movie" value="audioin.swf" /><param name="quality" value="high" /><param name="bgcolor" value="#666666" /><embed src="audioin.swf" quality="high" bgcolor="#666666" width="550" height="138" name="audioin" align="middle" allowScriptAccess="sameDomain" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" />
 </object>
-
 <textarea name="code" rows="8" cols="40" id='code' style='position:absolute;top:0;left:0;border:0;background:none;color:#fff;padding:10px;width:800px;height:600px;'></textarea>
 <p id='run_code'>run code</p>
 <form onsubmit="flush_buffer(); return false">
